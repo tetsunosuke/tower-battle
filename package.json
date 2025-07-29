@@ -1,0 +1,23 @@
+{
+  "name": "unilab-tower-battle",
+  "version": "1.0.0",
+  "description": "動物タワーバトルの改良verをunityで動かすためのレポジトリ",
+  "main": "game.js",
+  "scripts": {
+    "start": "live-server"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/murata-lab/unilab-tower-battle.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/murata-lab/unilab-tower-battle/issues"
+  },
+  "homepage": "https://github.com/murata-lab/unilab-tower-battle#readme",
+  "dependencies": {
+    "live-server": "^1.2.2"
+  }
+}
