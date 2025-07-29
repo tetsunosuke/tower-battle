@@ -10,9 +10,10 @@
 <body>
     <h1></h1>
     <div id="ui-container">
-        <div id="score">Score: 0</div>
+        <div id="score">Dropped: 0</div>
         <button id="rotate-btn">回転</button>
         <button id="retry-btn">リトライ</button>
+        <button id="save-image-btn" style="display: none;">画像を保存</button>
     </div>
 
     <div id="main-content">
@@ -33,6 +34,7 @@
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="game.js"></script>
 </body>
 </html>

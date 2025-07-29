@@ -1,6 +1,6 @@
 // Matter.js モジュールのエイリアスを設定
 const { Engine, Render, Runner, Bodies, Composite, Events, Mouse, MouseConstraint, Body, Vertices } = Matter;
-const OBJECT_SCALE = 0.3; // オブジェクトの最終的なスケール
+const OBJECT_SCALE = 0.5; // オブジェクトの最終的なスケール
 
 // --- DOM要素の取得 ---
 const gameContainer = document.getElementById('game-container');
@@ -14,6 +14,7 @@ const rotateBtn = document.getElementById('rotate-btn');
 const retryBtn = document.getElementById('retry-btn');
 const cameraSelect = document.getElementById('camera-select');
 const switchCameraBtn = document.getElementById('switch-camera-btn');
+const saveImageBtn = document.getElementById('save-image-btn');
 
 // --- ゲームの基本設定 ---
 const screenWidth = 800;
@@ -41,7 +42,7 @@ let currentObject = null;
 let isObjectFalling = false;
 let isGameOver = false;
 let isBoardStable = true;
-let score = 0;
+let droppedObjectCount = 0; // スコアを落下させた物体の個数に変更
 let lastResults = null; // MediaPipeの最新結果を保持する変数
 let currentCamera = null; // 現在のカメラインスタンス
 
@@ -158,7 +159,7 @@ function createConvexHull(points) {
 function generateObject(texture, vertices, center) {
     isBoardStable = false;
     const x = screenWidth / 2;
-    const y = 150;
+    const y = 5; // 物体を落とす位置をさらに高くする
     let body;
 
     if (vertices && vertices.length >= 3) {
@@ -221,6 +222,14 @@ retryBtn.addEventListener('click', () => location.reload());
 switchCameraBtn.addEventListener('click', () => {
     setupCamera(cameraSelect.value);
 });
+saveImageBtn.addEventListener('click', () => {
+    html2canvas(gameContainer).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'tower_battle_game_over.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+});
 
 const mouse = Mouse.create(render.canvas);
 const mouseConstraint = MouseConstraint.create(engine, {
@@ -232,7 +241,6 @@ Composite.add(world, mouseConstraint);
 Events.on(engine, 'beforeUpdate', () => {
     if (isGameOver) return;
     if (currentObject && !isObjectFalling) Body.setPosition(currentObject, { x: mouse.position.x, y: 300 }); // Y座標を300に変更
-    updateScore();
     checkGameOver();
     updateCameraView();
 });
@@ -242,27 +250,18 @@ Events.on(mouseConstraint, 'mouseup', () => {
         Body.setStatic(currentObject, false);
         isObjectFalling = true;
         currentObject = null;
+        droppedObjectCount++; // スコアをインクリメント
+        scoreElement.textContent = `Dropped: ${droppedObjectCount}`;
         setTimeout(checkBoardStability, 2000);
     }
 });
 
 // --- その他の関数（スコア、ゲームオーバー、カメラ更新）---
-let scoreUpdater = () => {
-    let highestPoint = 0;
-    for (let body of Composite.allBodies(world)) {
-        if (!body.isStatic) {
-            const topY = body.bounds.min.y;
-            highestPoint = Math.max(highestPoint, screenHeight - topY);
-        }
-    }
-    score = Math.floor(highestPoint);
-    scoreElement.textContent = `Score: ${score}`;
-};
-
 let gameOverChecker = () => {
     if(isGameOver) return;
+    const pedestalBottomY = screenHeight - 70; // 台座の下のY座標
     for (let body of Composite.allBodies(world)) {
-        if (!body.isStatic && body.position.y > screenHeight + 100) {
+        if (!body.isStatic && body.bounds.max.y > pedestalBottomY) {
             endGame();
             break;
         }
@@ -270,7 +269,7 @@ let gameOverChecker = () => {
 };
 
 let cameraViewUpdater = () => {
-    const highestY = screenHeight - score;
+    const highestY = screenHeight - droppedObjectCount; // スコアを落下数に変更
     if (highestY < screenHeight / 2) {
         const offsetY = (screenHeight / 2) - highestY;
         Render.lookAt(render, Composite.allBodies(world), { x: screenWidth / 2, y: screenHeight / 2 - offsetY });
@@ -281,13 +280,13 @@ let gameEnder = () => {
     if (isGameOver) return;
     isGameOver = true;
     gameOverOverlay.style.display = 'flex';
+    saveImageBtn.style.display = 'block'; // 画像保存ボタンを表示
     Runner.stop(runner);
     if (currentCamera) {
         currentCamera.stop();
     }
 };
 
-const updateScore = scoreUpdater;
 const checkGameOver = gameOverChecker;
 const updateCameraView = cameraViewUpdater;
 const endGame = gameEnder;
