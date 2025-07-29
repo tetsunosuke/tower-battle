@@ -12,6 +12,8 @@ const outputCtx = outputCanvas.getContext('2d', { willReadFrequently: true });
 const captureBtn = document.getElementById('capture-btn');
 const rotateBtn = document.getElementById('rotate-btn');
 const retryBtn = document.getElementById('retry-btn');
+const cameraSelect = document.getElementById('camera-select');
+const switchCameraBtn = document.getElementById('switch-camera-btn');
 
 // --- ゲームの基本設定 ---
 const screenWidth = 800;
@@ -41,6 +43,7 @@ let isGameOver = false;
 let isBoardStable = true;
 let score = 0;
 let lastResults = null; // MediaPipeの最新結果を保持する変数
+let currentCamera = null; // 現在のカメラインスタンス
 
 // --- MediaPipe Selfie Segmentationのセットアップ ---
 const selfieSegmentation = new SelfieSegmentation({locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`});
@@ -48,12 +51,39 @@ selfieSegmentation.setOptions({ modelSelection: 1 });
 selfieSegmentation.onResults(onResults);
 
 // --- カメラのセットアップ ---
-const camera = new Camera(videoElement, {
-  onFrame: async () => await selfieSegmentation.send({image: videoElement}),
-  width: 320,
-  height: 240
-});
-camera.start();
+async function setupCamera(deviceId) {
+    if (currentCamera) {
+        currentCamera.stop();
+    }
+    currentCamera = new Camera(videoElement, {
+        onFrame: async () => await selfieSegmentation.send({image: videoElement}),
+        width: 320,
+        height: 240,
+        deviceId: deviceId // 選択されたデバイスIDを使用
+    });
+    await currentCamera.start();
+}
+
+// カメラリストを生成
+async function populateCameraList() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    cameraSelect.innerHTML = ''; // Clear existing options
+    devices.forEach(device => {
+        if (device.kind === 'videoinput') {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.text = device.label || `Camera ${cameraSelect.options.length + 1}`;
+            cameraSelect.appendChild(option);
+        }
+    });
+    // 最初のカメラをデフォルトで選択
+    if (cameraSelect.options.length > 0) {
+        setupCamera(cameraSelect.value);
+    }
+}
+
+// 初期カメラ設定
+populateCameraList();
 
 // --- MediaPipe処理結果のコールバック ---
 function onResults(results) {
@@ -188,6 +218,9 @@ rotateBtn.addEventListener('click', () => {
     if (currentObject && !isObjectFalling && !isGameOver) Body.rotate(currentObject, -Math.PI / 6);
 });
 retryBtn.addEventListener('click', () => location.reload());
+switchCameraBtn.addEventListener('click', () => {
+    setupCamera(cameraSelect.value);
+});
 
 const mouse = Mouse.create(render.canvas);
 const mouseConstraint = MouseConstraint.create(engine, {
@@ -249,7 +282,9 @@ let gameEnder = () => {
     isGameOver = true;
     gameOverOverlay.style.display = 'flex';
     Runner.stop(runner);
-    camera.stop();
+    if (currentCamera) {
+        currentCamera.stop();
+    }
 };
 
 const updateScore = scoreUpdater;
